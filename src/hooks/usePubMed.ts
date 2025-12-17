@@ -85,7 +85,7 @@ export function usePubMed(query: string, delay: number = 0) {
                 setArticles(prev => {
                     // Avoid duplicates
                     const existingUids = new Set(prev.map((a: PubMedArticle) => a.uid));
-                    const newArticles = fetchedArticles.filter(a => !existingUids.has(a.uid));
+                    const newArticles = fetchedArticles.filter((a: PubMedArticle) => !existingUids.has(a.uid));
                     return [...prev, ...newArticles];
                 });
             }
