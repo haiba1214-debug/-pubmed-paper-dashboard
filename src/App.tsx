@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePubMed } from './hooks/usePubMed';
 import { PaperCard } from './components/PaperCard';
 import { FavoritesView } from './components/FavoritesView';
-import { SEARCH_QUERIES } from './lib/constants';
-import { Syringe, Baby, Globe, Activity, Plane, Loader2, ArrowLeft, Star } from 'lucide-react';
+import { UrlImportModal } from './components/UrlImportModal';
+import { CategoryMenu } from './components/CategoryMenu';
+import { EditCategoryModal } from './components/EditCategoryModal';
+import { SEARCH_QUERIES, type QueryItem } from './lib/constants';
+import { Syringe, Baby, Globe, Activity, Plane, Loader2, ArrowLeft, Star, Upload } from 'lucide-react';
 
-function getIcon(id: string) {
-  switch (id) {
+function getIcon(id: string, customIconId?: string) {
+  const iconId = customIconId || id;
+  switch (iconId) {
     case 'vaccine': return <Syringe className="w-5 h-5" />;
     case 'pediatric': return <Baby className="w-5 h-5" />;
     case 'general': return <Globe className="w-5 h-5" />;
@@ -15,20 +19,38 @@ function getIcon(id: string) {
   }
 }
 
-function CategorySection({ queryItem, index, onSelect }: { queryItem: typeof SEARCH_QUERIES[0], index: number, onSelect: () => void }) {
+function CategorySection({ queryItem, index, onSelect, onEdit, onDelete }: {
+  queryItem: QueryItem,
+  index: number,
+  onSelect: () => void,
+  onEdit?: () => void,
+  onDelete?: () => void
+}) {
   // Stagger requests by 1.5 second per component to avoid rate limiting (max 3 req/s)
   const { articles, loading, error, hasMore, loadMore } = usePubMed(queryItem.query, index * 1500);
+  const isCustomCategory = queryItem.id.startsWith('custom-');
 
   return (
     <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div
-        className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2 cursor-pointer hover:bg-slate-100/80 transition-colors"
-        onClick={onSelect}
+        className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2 hover:bg-slate-100/80 transition-colors"
       >
-        <div className="text-blue-600">
-          {getIcon(queryItem.id)}
+        <div
+          className="flex items-center gap-2 flex-1 cursor-pointer"
+          onClick={onSelect}
+        >
+          <div className="text-blue-600">
+            {getIcon(queryItem.id, queryItem.iconId)}
+          </div>
+          <h2 className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">{queryItem.label}</h2>
         </div>
-        <h2 className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">{queryItem.label}</h2>
+        {isCustomCategory && onEdit && onDelete && (
+          <CategoryMenu
+            isCustomCategory={isCustomCategory}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
@@ -70,7 +92,7 @@ function CategorySection({ queryItem, index, onSelect }: { queryItem: typeof SEA
   );
 }
 
-function SingleCategoryView({ queryItem, onBack }: { queryItem: typeof SEARCH_QUERIES[0], onBack: () => void }) {
+function SingleCategoryView({ queryItem, onBack }: { queryItem: QueryItem, onBack: () => void }) {
   // Use a delay of 0 since we only have one active fetch in this view
   const { articles, loading, error, hasMore, loadMore } = usePubMed(queryItem.query, 0);
 
@@ -86,7 +108,7 @@ function SingleCategoryView({ queryItem, onBack }: { queryItem: typeof SEARCH_QU
         </button>
         <div className="flex items-center gap-2">
           <div className="text-blue-600">
-            {getIcon(queryItem.id)}
+            {getIcon(queryItem.id, queryItem.iconId)}
           </div>
           <h2 className="text-xl font-bold text-slate-900">{queryItem.label}</h2>
         </div>
@@ -133,8 +155,63 @@ function SingleCategoryView({ queryItem, onBack }: { queryItem: typeof SEARCH_QU
 function App() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<QueryItem | null>(null);
+  const [customCategories, setCustomCategories] = useState<QueryItem[]>([]);
 
-  const selectedQuery = SEARCH_QUERIES.find(q => q.id === selectedCategoryId);
+  // Load custom categories from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('customCategories');
+    if (saved) {
+      try {
+        setCustomCategories(JSON.parse(saved));
+      } catch (err) {
+        console.error('Failed to load custom categories:', err);
+      }
+    }
+  }, []);
+
+  // Combine default and custom categories
+  const allQueries = [...SEARCH_QUERIES, ...customCategories];
+  const selectedQuery = allQueries.find(q => q.id === selectedCategoryId);
+
+  // Edit category handler
+  const handleEditCategory = (categoryId: string) => {
+    const category = customCategories.find(c => c.id === categoryId);
+    if (category) {
+      setEditingCategory(category);
+      setShowEditModal(true);
+    }
+  };
+
+  // Save edited category
+  const handleSaveCategory = (categoryId: string, newLabel: string, newQuery: string) => {
+    const updated = customCategories.map(cat =>
+      cat.id === categoryId
+        ? { ...cat, label: newLabel, query: newQuery }
+        : cat
+    );
+    setCustomCategories(updated);
+    localStorage.setItem('customCategories', JSON.stringify(updated));
+  };
+
+  // Delete category handler
+  const handleDeleteCategory = (categoryId: string) => {
+    const category = customCategories.find(c => c.id === categoryId);
+    if (!category) return;
+
+    if (window.confirm(`Are you sure you want to delete "${category.label}"?`)) {
+      const updated = customCategories.filter(c => c.id !== categoryId);
+      setCustomCategories(updated);
+      localStorage.setItem('customCategories', JSON.stringify(updated));
+
+      // If the deleted category was selected, deselect it
+      if (selectedCategoryId === categoryId) {
+        setSelectedCategoryId(null);
+      }
+    }
+  };
 
   return (
     <div className="h-screen bg-slate-100 flex flex-col overflow-hidden">
@@ -150,18 +227,56 @@ function App() {
             <Activity className="w-6 h-6 text-blue-600" />
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">PubMed Dashboard</h1>
           </div>
-          <button
-            onClick={() => {
-              setShowFavorites(true);
-              setSelectedCategoryId(null);
-            }}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
-          >
-            <Star className="w-5 h-5" />
-            <span>Favorites</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            >
+              <Upload className="w-5 h-5" />
+              <span>Import from URL</span>
+            </button>
+            <button
+              onClick={() => {
+                setShowFavorites(true);
+                setSelectedCategoryId(null);
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
+            >
+              <Star className="w-5 h-5" />
+              <span>Favorites</span>
+            </button>
+          </div>
         </div>
       </header>
+
+      <UrlImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={(query, title, iconId) => {
+          const newCategory: QueryItem = {
+            id: `custom-${Date.now()}`,
+            label: title,
+            query: query,
+            iconId: iconId
+          };
+          const updated = [...customCategories, newCategory];
+          setCustomCategories(updated);
+          localStorage.setItem('customCategories', JSON.stringify(updated));
+          setShowImportModal(false);
+        }}
+      />
+
+      {editingCategory && (
+        <EditCategoryModal
+          isOpen={showEditModal}
+          category={editingCategory}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingCategory(null);
+          }}
+          onSave={handleSaveCategory}
+        />
+      )}
 
       <main className="flex-1 p-4 overflow-hidden">
         {showFavorites ? (
@@ -173,12 +288,14 @@ function App() {
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
-            {SEARCH_QUERIES.map((item, index) => (
+            {allQueries.map((item, index) => (
               <CategorySection
                 key={item.id}
                 queryItem={item}
                 index={index}
                 onSelect={() => setSelectedCategoryId(item.id)}
+                onEdit={() => handleEditCategory(item.id)}
+                onDelete={() => handleDeleteCategory(item.id)}
               />
             ))}
           </div>

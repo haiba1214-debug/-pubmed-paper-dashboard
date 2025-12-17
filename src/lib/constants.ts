@@ -21,6 +21,14 @@ export const SEARCH_QUERIES = [
     }
 ];
 
+export interface QueryItem {
+    id: string;
+    label: string;
+    query: string;
+    iconId?: string; // Optional icon identifier for custom categories
+}
+
+
 export interface PubMedArticle {
     uid: string;
     title: string;
