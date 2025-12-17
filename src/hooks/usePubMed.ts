@@ -3,7 +3,7 @@ import type { PubMedArticle } from '../lib/constants';
 
 const BASE_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils';
 
-export function usePubMed(query: string, delay: number = 0) {
+export function usePubMed(query: string, delay: number = 0, shouldFetch: boolean = true) {
     const [articles, setArticles] = useState<PubMedArticle[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -12,7 +12,7 @@ export function usePubMed(query: string, delay: number = 0) {
     const [hasMore, setHasMore] = useState(false);
 
     useEffect(() => {
-        if (!query) return;
+        if (!query || !shouldFetch) return;
 
         let mounted = true;
         let timeoutId: ReturnType<typeof setTimeout>;
@@ -105,7 +105,7 @@ export function usePubMed(query: string, delay: number = 0) {
             mounted = false;
             clearTimeout(timeoutId);
         };
-    }, [query, delay]);
+    }, [query, delay, shouldFetch]);
 
     const loadMore = async () => {
         if (!hasMore || loading) return;

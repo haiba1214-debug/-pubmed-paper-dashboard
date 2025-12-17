@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { usePubMed } from './hooks/usePubMed';
 import { PaperCard } from './components/PaperCard';
+import { FavoritesView } from './components/FavoritesView';
 import { SEARCH_QUERIES } from './lib/constants';
-import { Syringe, Baby, Globe, Activity, Plane, Loader2, ArrowLeft } from 'lucide-react';
+import { Syringe, Baby, Globe, Activity, Plane, Loader2, ArrowLeft, Star } from 'lucide-react';
 
 function getIcon(id: string) {
   switch (id) {
@@ -131,23 +132,41 @@ function SingleCategoryView({ queryItem, onBack }: { queryItem: typeof SEARCH_QU
 
 function App() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [showFavorites, setShowFavorites] = useState(false);
 
   const selectedQuery = SEARCH_QUERIES.find(q => q.id === selectedCategoryId);
 
   return (
     <div className="h-screen bg-slate-100 flex flex-col overflow-hidden">
       <header className="bg-white border-b border-slate-200 px-6 py-3 flex-shrink-0 z-10">
-        <div
-          className="flex items-center gap-2 cursor-pointer w-fit"
-          onClick={() => setSelectedCategoryId(null)}
-        >
-          <Activity className="w-6 h-6 text-blue-600" />
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">PubMed Dashboard</h1>
+        <div className="flex items-center justify-between">
+          <div
+            className="flex items-center gap-2 cursor-pointer w-fit"
+            onClick={() => {
+              setSelectedCategoryId(null);
+              setShowFavorites(false);
+            }}
+          >
+            <Activity className="w-6 h-6 text-blue-600" />
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">PubMed Dashboard</h1>
+          </div>
+          <button
+            onClick={() => {
+              setShowFavorites(true);
+              setSelectedCategoryId(null);
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
+          >
+            <Star className="w-5 h-5" />
+            <span>Favorites</span>
+          </button>
         </div>
       </header>
 
       <main className="flex-1 p-4 overflow-hidden">
-        {selectedQuery ? (
+        {showFavorites ? (
+          <FavoritesView onBack={() => setShowFavorites(false)} />
+        ) : selectedQuery ? (
           <SingleCategoryView
             queryItem={selectedQuery}
             onBack={() => setSelectedCategoryId(null)}
