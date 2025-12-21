@@ -321,7 +321,7 @@ function Dashboard() {
         ) : (
           <>
             {/* Desktop View */}
-            <div className="hidden md:grid md:grid-cols-2 gap-4 h-full">
+            <div className="hidden md:grid md:grid-cols-2 gap-4 auto-rows-fr overflow-y-auto">
               {boards.map((item, index) => (
                 <CategorySection
                   key={item.id}
