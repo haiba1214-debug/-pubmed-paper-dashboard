@@ -10,7 +10,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { db } from './lib/firebase'; // Import db
 import { doc, getDoc, setDoc } from 'firebase/firestore'; // Import Firestore functions
-import { DndContext, closestCenter, type DragEndEvent, type DragStartEvent, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
+import { DndContext, closestCorners, type DragEndEvent, type DragStartEvent, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, rectSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SEARCH_QUERIES, type QueryItem } from './lib/constants';
@@ -373,9 +373,9 @@ function Dashboard() {
             onBack={() => setSelectedCategoryId(null)}
           />
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             {/* Desktop View */}
-            <div className="hidden md:grid md:grid-cols-2 gap-4 auto-rows-[600px] h-full overflow-y-auto">
+            <div className="hidden md:grid md:grid-cols-2 gap-4 auto-rows-[600px] h-full overflow-y-auto" id="droppable-container">
               <SortableContext items={boards.map(b => b.id)} strategy={rectSortingStrategy}>
                 {boards.map((item, index) => (
                   <CategorySection
@@ -406,14 +406,26 @@ function Dashboard() {
               </SortableContext>
             </div>
 
-            <DragOverlay>
-              {activeDragId ? (
-                <div className="w-[400px] h-[200px] bg-white rounded-xl border-2 border-blue-500 shadow-2xl flex items-center justify-center opacity-90">
-                  <span className="text-xl font-bold text-blue-600">
-                    {boards.find(b => b.id === activeDragId)?.label || '移動中...'}
-                  </span>
-                </div>
-              ) : null}
+            <DragOverlay dropAnimation={null}>
+              {activeDragId ? (() => {
+                const activeBoard = boards.find(b => b.id === activeDragId);
+                if (!activeBoard) return null;
+                return (
+                  <div className="w-full max-w-[600px] h-[600px] opacity-80">
+                    <div className="flex flex-col h-full bg-white rounded-xl border-2 border-blue-500 shadow-2xl overflow-hidden">
+                      <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                        <div className="text-blue-600">
+                          {getIcon(activeBoard.id, activeBoard.iconId)}
+                        </div>
+                        <h2 className="font-semibold text-slate-800 flex-1">{activeBoard.label}</h2>
+                      </div>
+                      <div className="flex-1 overflow-hidden bg-slate-50 flex items-center justify-center">
+                        <div className="text-slate-400 text-lg">ドラッグ中...</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })() : null}
             </DragOverlay>
           </DndContext>
         )}
