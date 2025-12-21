@@ -33,7 +33,6 @@ function CategorySection({ queryItem, index, onSelect, onEdit, onDelete }: {
 }) {
   // Stagger requests by 1.5 second per component to avoid rate limiting (max 3 req/s)
   const { articles, loading, error, hasMore, loadMore } = usePubMed(queryItem.query, index * 1500);
-  const isCustomCategory = queryItem.id.startsWith('custom-');
 
   return (
     <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -49,9 +48,9 @@ function CategorySection({ queryItem, index, onSelect, onEdit, onDelete }: {
           </div>
           <h2 className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">{queryItem.label}</h2>
         </div>
-        {isCustomCategory && onEdit && onDelete && (
+        {onEdit && onDelete && (
           <CategoryMenu
-            isCustomCategory={isCustomCategory}
+            isCustomCategory={true}
             onEdit={onEdit}
             onDelete={onDelete}
           />
@@ -164,17 +163,22 @@ function Dashboard() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<QueryItem | null>(null);
-  const [customCategories, setCustomCategories] = useState<QueryItem[]>([]);
+  const [boards, setBoards] = useState<QueryItem[]>([]);
 
-  // Load custom categories from Firestore
+  // Load boards from Firestore (or initialize with defaults on first load)
   useEffect(() => {
     async function loadData() {
       if (currentUser) {
         try {
           const docRef = doc(db, "users", currentUser.uid);
           const docSnap = await getDoc(docRef);
-          if (docSnap.exists() && docSnap.data().customCategories) {
-            setCustomCategories(docSnap.data().customCategories);
+          if (docSnap.exists() && docSnap.data().boards) {
+            setBoards(docSnap.data().boards);
+          } else {
+            // First time: initialize with default boards
+            const initialBoards = SEARCH_QUERIES.map(q => ({ ...q }));
+            setBoards(initialBoards);
+            await setDoc(docRef, { boards: initialBoards }, { merge: true });
           }
         } catch (err) {
           console.error('Failed to load user data:', err);
@@ -184,49 +188,48 @@ function Dashboard() {
     loadData();
   }, [currentUser]);
 
-  const saveToFirestore = async (categories: QueryItem[]) => {
+  const saveToFirestore = async (boardsData: QueryItem[]) => {
     if (!currentUser) return;
     try {
       await setDoc(doc(db, "users", currentUser.uid), {
-        customCategories: categories
+        boards: boardsData
       }, { merge: true });
     } catch (err) {
       console.error('Failed to save user data:', err);
     }
   };
 
-  // Combine default and custom categories
-  const allQueries = [...SEARCH_QUERIES, ...customCategories];
-  const selectedQuery = allQueries.find(q => q.id === selectedCategoryId);
+  // Use boards directly (includes default + custom)
+  const selectedQuery = boards.find(q => q.id === selectedCategoryId);
 
-  // Edit category handler
+  // Edit board handler
   const handleEditCategory = (categoryId: string) => {
-    const category = customCategories.find(c => c.id === categoryId);
+    const category = boards.find(c => c.id === categoryId);
     if (category) {
       setEditingCategory(category);
       setShowEditModal(true);
     }
   };
 
-  // Save edited category
+  // Save edited board
   const handleSaveCategory = (categoryId: string, newLabel: string, newQuery: string) => {
-    const updated = customCategories.map(cat =>
+    const updated = boards.map(cat =>
       cat.id === categoryId
         ? { ...cat, label: newLabel, query: newQuery }
         : cat
     );
-    setCustomCategories(updated);
+    setBoards(updated);
     saveToFirestore(updated);
   };
 
-  // Delete category handler
+  // Delete board handler
   const handleDeleteCategory = (categoryId: string) => {
-    const category = customCategories.find(c => c.id === categoryId);
+    const category = boards.find(c => c.id === categoryId);
     if (!category) return;
 
     if (window.confirm(`Are you sure you want to delete "${category.label}"?`)) {
-      const updated = customCategories.filter(c => c.id !== categoryId);
-      setCustomCategories(updated);
+      const updated = boards.filter(c => c.id !== categoryId);
+      setBoards(updated);
       saveToFirestore(updated);
 
       // If the deleted category was selected, deselect it
@@ -288,8 +291,8 @@ function Dashboard() {
             query: query,
             iconId: iconId
           };
-          const updated = [...customCategories, newCategory];
-          setCustomCategories(updated);
+          const updated = [...boards, newCategory];
+          setBoards(updated);
           saveToFirestore(updated);
           setShowImportModal(false);
         }}
@@ -319,7 +322,7 @@ function Dashboard() {
           <>
             {/* Desktop View */}
             <div className="hidden md:grid md:grid-cols-2 gap-4 h-full">
-              {allQueries.map((item, index) => (
+              {boards.map((item, index) => (
                 <CategorySection
                   key={item.id}
                   queryItem={item}
@@ -333,7 +336,7 @@ function Dashboard() {
 
             {/* Mobile View */}
             <div className="grid grid-cols-1 gap-4 md:hidden pb-10">
-              {allQueries.map((item) => (
+              {boards.map((item) => (
                 <CategoryBanner
                   key={item.id}
                   queryItem={item}
