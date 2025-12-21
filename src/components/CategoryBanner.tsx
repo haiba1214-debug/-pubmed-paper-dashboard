@@ -1,4 +1,4 @@
-import { QueryItem } from '../lib/constants';
+import type { QueryItem } from '../lib/constants';
 
 interface CategoryBannerProps {
     queryItem: QueryItem;
