@@ -6,6 +6,10 @@ import { UrlImportModal } from './components/UrlImportModal';
 import { CategoryMenu } from './components/CategoryMenu';
 import { EditCategoryModal } from './components/EditCategoryModal';
 import { CategoryBanner } from './components/CategoryBanner';
+import { LoginScreen } from './components/LoginScreen';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { db } from './lib/firebase'; // Import db
+import { doc, getDoc, setDoc } from 'firebase/firestore'; // Import Firestore functions
 import { SEARCH_QUERIES, type QueryItem } from './lib/constants';
 import { Syringe, Baby, Globe, Activity, Plane, Loader2, ArrowLeft, Star, Upload } from 'lucide-react';
 
@@ -153,7 +157,8 @@ function SingleCategoryView({ queryItem, onBack }: { queryItem: QueryItem, onBac
   );
 }
 
-function App() {
+function Dashboard() {
+  const { logout, currentUser } = useAuth();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [showFavorites, setShowFavorites] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -161,17 +166,34 @@ function App() {
   const [editingCategory, setEditingCategory] = useState<QueryItem | null>(null);
   const [customCategories, setCustomCategories] = useState<QueryItem[]>([]);
 
-  // Load custom categories from localStorage on mount
+  // Load custom categories from Firestore
   useEffect(() => {
-    const saved = localStorage.getItem('customCategories');
-    if (saved) {
-      try {
-        setCustomCategories(JSON.parse(saved));
-      } catch (err) {
-        console.error('Failed to load custom categories:', err);
+    async function loadData() {
+      if (currentUser) {
+        try {
+          const docRef = doc(db, "users", currentUser.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists() && docSnap.data().customCategories) {
+            setCustomCategories(docSnap.data().customCategories);
+          }
+        } catch (err) {
+          console.error('Failed to load user data:', err);
+        }
       }
     }
-  }, []);
+    loadData();
+  }, [currentUser]);
+
+  const saveToFirestore = async (categories: QueryItem[]) => {
+    if (!currentUser) return;
+    try {
+      await setDoc(doc(db, "users", currentUser.uid), {
+        customCategories: categories
+      }, { merge: true });
+    } catch (err) {
+      console.error('Failed to save user data:', err);
+    }
+  };
 
   // Combine default and custom categories
   const allQueries = [...SEARCH_QUERIES, ...customCategories];
@@ -194,7 +216,7 @@ function App() {
         : cat
     );
     setCustomCategories(updated);
-    localStorage.setItem('customCategories', JSON.stringify(updated));
+    saveToFirestore(updated);
   };
 
   // Delete category handler
@@ -205,7 +227,7 @@ function App() {
     if (window.confirm(`Are you sure you want to delete "${category.label}"?`)) {
       const updated = customCategories.filter(c => c.id !== categoryId);
       setCustomCategories(updated);
-      localStorage.setItem('customCategories', JSON.stringify(updated));
+      saveToFirestore(updated);
 
       // If the deleted category was selected, deselect it
       if (selectedCategoryId === categoryId) {
@@ -229,6 +251,12 @@ function App() {
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">PubMed Dashboard</h1>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={logout}
+              className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              Log out
+            </button>
             <button
               onClick={() => setShowImportModal(true)}
               className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -262,7 +290,7 @@ function App() {
           };
           const updated = [...customCategories, newCategory];
           setCustomCategories(updated);
-          localStorage.setItem('customCategories', JSON.stringify(updated));
+          saveToFirestore(updated);
           setShowImportModal(false);
         }}
       />
@@ -321,4 +349,20 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
+function AppContent() {
+  const { currentUser } = useAuth();
+
+  if (!currentUser) {
+    return <LoginScreen />;
+  }
+
+  return <Dashboard />;
+}
