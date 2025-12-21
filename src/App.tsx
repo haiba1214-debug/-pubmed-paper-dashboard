@@ -10,8 +10,11 @@ import { LoginScreen } from './components/LoginScreen';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { db } from './lib/firebase'; // Import db
 import { doc, getDoc, setDoc } from 'firebase/firestore'; // Import Firestore functions
+import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { SEARCH_QUERIES, type QueryItem } from './lib/constants';
-import { Syringe, Baby, Globe, Activity, Plane, Loader2, ArrowLeft, Star, Upload } from 'lucide-react';
+import { Syringe, Baby, Globe, Activity, Plane, Loader2, ArrowLeft, Star, Upload, GripVertical } from 'lucide-react';
 
 function getIcon(id: string, customIconId?: string) {
   const iconId = customIconId || id;
@@ -33,12 +36,26 @@ function CategorySection({ queryItem, index, onSelect, onEdit, onDelete }: {
 }) {
   // Stagger requests by 1.5 second per component to avoid rate limiting (max 3 req/s)
   const { articles, loading, error, hasMore, loadMore } = usePubMed(queryItem.query, index * 1500);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: queryItem.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div ref={setNodeRef} style={style} className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div
         className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2 hover:bg-slate-100/80 transition-colors"
       >
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-slate-200 rounded transition-colors"
+        >
+          <GripVertical className="w-4 h-4 text-slate-400" />
+        </button>
         <div
           className="flex items-center gap-2 flex-1 cursor-pointer"
           onClick={onSelect}
@@ -239,6 +256,22 @@ function Dashboard() {
     }
   };
 
+  // Handle drag end for reordering
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = boards.findIndex(board => board.id === active.id);
+    const newIndex = boards.findIndex(board => board.id === over.id);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const reordered = arrayMove(boards, oldIndex, newIndex);
+      setBoards(reordered);
+      saveToFirestore(reordered);
+    }
+  };
+
   return (
     <div className="h-screen bg-slate-100 flex flex-col overflow-hidden">
       <header className="bg-white border-b border-slate-200 px-6 py-3 flex-shrink-0 z-10">
@@ -319,35 +352,39 @@ function Dashboard() {
             onBack={() => setSelectedCategoryId(null)}
           />
         ) : (
-          <>
+          <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             {/* Desktop View */}
             <div className="hidden md:grid md:grid-cols-2 gap-4 auto-rows-[600px] h-full overflow-y-auto">
-              {boards.map((item, index) => (
-                <CategorySection
-                  key={item.id}
-                  queryItem={item}
-                  index={index}
-                  onSelect={() => setSelectedCategoryId(item.id)}
-                  onEdit={() => handleEditCategory(item.id)}
-                  onDelete={() => handleDeleteCategory(item.id)}
-                />
-              ))}
+              <SortableContext items={boards.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                {boards.map((item, index) => (
+                  <CategorySection
+                    key={item.id}
+                    queryItem={item}
+                    index={index}
+                    onSelect={() => setSelectedCategoryId(item.id)}
+                    onEdit={() => handleEditCategory(item.id)}
+                    onDelete={() => handleDeleteCategory(item.id)}
+                  />
+                ))}
+              </SortableContext>
             </div>
 
             {/* Mobile View */}
             <div className="grid grid-cols-1 gap-4 md:hidden pb-10">
-              {boards.map((item) => (
-                <CategoryBanner
-                  key={item.id}
-                  queryItem={item}
-                  icon={getIcon(item.id, item.iconId)}
-                  onClick={() => setSelectedCategoryId(item.id)}
-                  onEdit={() => handleEditCategory(item.id)}
-                  onDelete={() => handleDeleteCategory(item.id)}
-                />
-              ))}
+              <SortableContext items={boards.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                {boards.map((item) => (
+                  <CategoryBanner
+                    key={item.id}
+                    queryItem={item}
+                    icon={getIcon(item.id, item.iconId)}
+                    onClick={() => setSelectedCategoryId(item.id)}
+                    onEdit={() => handleEditCategory(item.id)}
+                    onDelete={() => handleDeleteCategory(item.id)}
+                  />
+                ))}
+              </SortableContext>
             </div>
-          </>
+          </DndContext>
         )}
       </main>
     </div >

@@ -1,5 +1,7 @@
 import type { QueryItem } from '../lib/constants';
 import { CategoryMenu } from './CategoryMenu';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface CategoryBannerProps {
     queryItem: QueryItem;
@@ -10,8 +12,16 @@ interface CategoryBannerProps {
 }
 
 export function CategoryBanner({ queryItem, icon, onClick, onEdit, onDelete }: CategoryBannerProps) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: queryItem.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
     return (
-        <div className="relative w-full h-24 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-colors flex flex-col items-center justify-center gap-2">
+        <div ref={setNodeRef} style={style} className="relative w-full h-24 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-colors flex flex-col items-center justify-center gap-2">
             <button
                 onClick={onClick}
                 className="w-full h-full flex flex-col items-center justify-center gap-2"
@@ -24,7 +34,11 @@ export function CategoryBanner({ queryItem, icon, onClick, onEdit, onDelete }: C
                 </span>
             </button>
             {onEdit && onDelete && (
-                <div className="absolute top-2 right-2">
+                <div
+                    {...attributes}
+                    {...listeners}
+                    className="absolute top-2 right-2 touch-none"
+                >
                     <CategoryMenu
                         isCustomCategory={true}
                         onEdit={onEdit}
