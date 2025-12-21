@@ -10,7 +10,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { db } from './lib/firebase'; // Import db
 import { doc, getDoc, setDoc } from 'firebase/firestore'; // Import Firestore functions
-import { DndContext, closestCenter, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, closestCenter, type DragEndEvent, type DragStartEvent, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, rectSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SEARCH_QUERIES, type QueryItem } from './lib/constants';
@@ -186,6 +186,7 @@ function Dashboard() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<QueryItem | null>(null);
   const [boards, setBoards] = useState<QueryItem[]>([]);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   // Configure drag sensors with activation distance
   const sensors = useSensors(
@@ -270,9 +271,15 @@ function Dashboard() {
     }
   };
 
+  // Handle drag start
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  };
+
   // Handle drag end for reordering
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveDragId(null);
 
     if (!over || active.id === over.id) return;
 
@@ -366,7 +373,7 @@ function Dashboard() {
             onBack={() => setSelectedCategoryId(null)}
           />
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             {/* Desktop View */}
             <div className="hidden md:grid md:grid-cols-2 gap-4 auto-rows-[600px] h-full overflow-y-auto">
               <SortableContext items={boards.map(b => b.id)} strategy={rectSortingStrategy}>
@@ -398,6 +405,16 @@ function Dashboard() {
                 ))}
               </SortableContext>
             </div>
+
+            <DragOverlay>
+              {activeDragId ? (
+                <div className="w-[400px] h-[200px] bg-white rounded-xl border-2 border-blue-500 shadow-2xl flex items-center justify-center opacity-90">
+                  <span className="text-xl font-bold text-blue-600">
+                    {boards.find(b => b.id === activeDragId)?.label || '移動中...'}
+                  </span>
+                </div>
+              ) : null}
+            </DragOverlay>
           </DndContext>
         )}
       </main>
