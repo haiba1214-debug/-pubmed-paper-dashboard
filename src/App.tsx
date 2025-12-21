@@ -36,7 +36,7 @@ function CategorySection({ queryItem, index, onSelect, onEdit, onDelete }: {
 }) {
   // Stagger requests by 1.5 second per component to avoid rate limiting (max 3 req/s)
   const { articles, loading, error, hasMore, loadMore } = usePubMed(queryItem.query, index * 1500);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: queryItem.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({ id: queryItem.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -45,7 +45,12 @@ function CategorySection({ queryItem, index, onSelect, onEdit, onDelete }: {
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden relative ${isOver ? 'before:content-[""] before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-blue-500 before:z-10' : ''
+        }`}
+    >
       <div
         className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2 hover:bg-slate-100/80 transition-colors"
       >
