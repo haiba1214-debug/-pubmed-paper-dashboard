@@ -5,6 +5,7 @@ import { FavoritesView } from './components/FavoritesView';
 import { UrlImportModal } from './components/UrlImportModal';
 import { CategoryMenu } from './components/CategoryMenu';
 import { EditCategoryModal } from './components/EditCategoryModal';
+import { CategoryBanner } from './components/CategoryBanner';
 import { SEARCH_QUERIES, type QueryItem } from './lib/constants';
 import { Syringe, Baby, Globe, Activity, Plane, Loader2, ArrowLeft, Star, Upload } from 'lucide-react';
 
@@ -287,21 +288,36 @@ function App() {
             onBack={() => setSelectedCategoryId(null)}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
-            {allQueries.map((item, index) => (
-              <CategorySection
-                key={item.id}
-                queryItem={item}
-                index={index}
-                onSelect={() => setSelectedCategoryId(item.id)}
-                onEdit={() => handleEditCategory(item.id)}
-                onDelete={() => handleDeleteCategory(item.id)}
-              />
-            ))}
-          </div>
+          <>
+            {/* Desktop View */}
+            <div className="hidden md:grid md:grid-cols-2 gap-4 h-full">
+              {allQueries.map((item, index) => (
+                <CategorySection
+                  key={item.id}
+                  queryItem={item}
+                  index={index}
+                  onSelect={() => setSelectedCategoryId(item.id)}
+                  onEdit={() => handleEditCategory(item.id)}
+                  onDelete={() => handleDeleteCategory(item.id)}
+                />
+              ))}
+            </div>
+
+            {/* Mobile View */}
+            <div className="grid grid-cols-1 gap-4 md:hidden pb-10">
+              {allQueries.map((item) => (
+                <CategoryBanner
+                  key={item.id}
+                  queryItem={item}
+                  icon={getIcon(item.id, item.iconId)}
+                  onClick={() => setSelectedCategoryId(item.id)}
+                />
+              ))}
+            </div>
+          </>
         )}
       </main>
-    </div>
+    </div >
   );
 }
 

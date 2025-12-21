@@ -1,4 +1,4 @@
-export const SEARCH_QUERIES = [
+export const SEARCH_QUERIES: QueryItem[] = [
     {
         id: 'vaccine',
         label: 'Vaccine Journals',
