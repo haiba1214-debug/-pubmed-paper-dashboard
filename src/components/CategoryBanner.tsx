@@ -2,6 +2,7 @@ import type { QueryItem } from '../lib/constants';
 import { CategoryMenu } from './CategoryMenu';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 
 interface CategoryBannerProps {
     queryItem: QueryItem;
@@ -21,24 +22,32 @@ export function CategoryBanner({ queryItem, icon, onClick, onEdit, onDelete }: C
     };
 
     return (
-        <div ref={setNodeRef} style={style} className="relative w-full h-24 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-colors flex flex-col items-center justify-center gap-2">
+        <div ref={setNodeRef} style={style} className="relative w-full h-24 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-2 px-2">
+            {/* Drag Handle */}
+            <button
+                {...attributes}
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing p-2 hover:bg-slate-200 rounded transition-colors shrink-0"
+            >
+                <GripVertical className="w-5 h-5 text-slate-400" />
+            </button>
+
+            {/* Main Content */}
             <button
                 onClick={onClick}
-                className="w-full h-full flex flex-col items-center justify-center gap-2"
+                className="flex-1 flex flex-col items-center justify-center gap-2 py-2"
             >
                 <div className="text-blue-600">
                     {icon}
                 </div>
-                <span className="text-lg font-bold text-slate-900 text-center px-4">
+                <span className="text-lg font-bold text-slate-900 text-center px-2">
                     {queryItem.label}
                 </span>
             </button>
+
+            {/* Edit/Delete Menu */}
             {onEdit && onDelete && (
-                <div
-                    {...attributes}
-                    {...listeners}
-                    className="absolute top-2 right-2 touch-none"
-                >
+                <div className="shrink-0">
                     <CategoryMenu
                         isCustomCategory={true}
                         onEdit={onEdit}
