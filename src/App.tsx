@@ -342,6 +342,8 @@ function Dashboard() {
                   queryItem={item}
                   icon={getIcon(item.id, item.iconId)}
                   onClick={() => setSelectedCategoryId(item.id)}
+                  onEdit={() => handleEditCategory(item.id)}
+                  onDelete={() => handleDeleteCategory(item.id)}
                 />
               ))}
             </div>
