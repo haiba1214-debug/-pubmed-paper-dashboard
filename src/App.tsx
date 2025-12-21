@@ -10,8 +10,8 @@ import { LoginScreen } from './components/LoginScreen';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { db } from './lib/firebase'; // Import db
 import { doc, getDoc, setDoc } from 'firebase/firestore'; // Import Firestore functions
-import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
+import { DndContext, closestCenter, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, rectSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SEARCH_QUERIES, type QueryItem } from './lib/constants';
 import { Syringe, Baby, Globe, Activity, Plane, Loader2, ArrowLeft, Star, Upload, GripVertical } from 'lucide-react';
@@ -187,6 +187,15 @@ function Dashboard() {
   const [editingCategory, setEditingCategory] = useState<QueryItem | null>(null);
   const [boards, setBoards] = useState<QueryItem[]>([]);
 
+  // Configure drag sensors with activation distance
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Start drag after 8px of movement
+      },
+    })
+  );
+
   // Load boards from Firestore (or initialize with defaults on first load)
   useEffect(() => {
     async function loadData() {
@@ -357,10 +366,10 @@ function Dashboard() {
             onBack={() => setSelectedCategoryId(null)}
           />
         ) : (
-          <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             {/* Desktop View */}
             <div className="hidden md:grid md:grid-cols-2 gap-4 auto-rows-[600px] h-full overflow-y-auto">
-              <SortableContext items={boards.map(b => b.id)} strategy={verticalListSortingStrategy}>
+              <SortableContext items={boards.map(b => b.id)} strategy={rectSortingStrategy}>
                 {boards.map((item, index) => (
                   <CategorySection
                     key={item.id}
