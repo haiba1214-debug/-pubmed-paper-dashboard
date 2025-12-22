@@ -216,7 +216,7 @@ function Dashboard() {
         try {
           const docRef = doc(db, "users", currentUser.uid);
           const docSnap = await getDoc(docRef);
-          if (docSnap.exists() && docSnap.data().boards) {
+          if (docSnap.exists() && docSnap.data().boards && docSnap.data().boards.length > 0) {
             setBoards(docSnap.data().boards);
           } else {
             // First time: initialize with default boards
@@ -233,6 +233,7 @@ function Dashboard() {
   }, [currentUser]);
 
   const handleReorderSave = async (newBoards: QueryItem[]) => {
+    if (newBoards.length === 0) return; // Prevent saving empty list
     setBoards(newBoards);
     // Save to Firestore logic
     if (currentUser) {
@@ -488,7 +489,7 @@ function Dashboard() {
           boards={boards}
           onSave={handleReorderSave}
         />
-        <div className="fixed bottom-1 right-1 text-[10px] text-slate-300 pointer-events-none">v1.4.0</div>
+        <div className="fixed bottom-1 right-1 text-[10px] text-slate-300 pointer-events-none">v1.4.1</div>
       </main>
     </div >
   );

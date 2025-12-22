@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -64,8 +64,14 @@ interface ReorderBoardsModalProps {
 }
 
 export function ReorderBoardsModal({ isOpen, onClose, boards, onSave }: ReorderBoardsModalProps) {
-    const [items, setItems] = useState(boards);
+    const [items, setItems] = useState<QueryItem[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            setItems(boards);
+        }
+    }, [isOpen, boards]);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -158,7 +164,11 @@ export function ReorderBoardsModal({ isOpen, onClose, boards, onSave }: ReorderB
                     </button>
                     <button
                         onClick={handleSave}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold flex items-center gap-2"
+                        disabled={items.length === 0}
+                        className={`px-4 py-2 rounded-lg transition-colors font-bold flex items-center gap-2 ${items.length === 0
+                                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
                     >
                         <Check className="w-4 h-4" />
                         保存する
