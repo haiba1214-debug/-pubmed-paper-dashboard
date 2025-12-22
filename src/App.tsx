@@ -41,14 +41,18 @@ function CategorySection({ queryItem, index, onSelect, onEdit, onDelete }: {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 2 : 1, // Ensure dragging item is above others
+    opacity: isDragging ? 0.3 : 1, // Make placeholder more transparent
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"
+      className={`flex flex-col h-full rounded-xl overflow-hidden transition-all ${isDragging
+        ? 'bg-slate-50 border-2 border-dashed border-slate-300 shadow-none' // Placeholder style
+        : 'bg-white border border-slate-200 shadow-sm' // Normal style
+        }`}
     >
       <div
         className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2 hover:bg-slate-100/80 transition-colors"
@@ -191,7 +195,7 @@ function Dashboard() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // Start drag after 8px of movement
+        distance: 5, // Start drag after 5px of movement (more responsive)
       },
     })
   );
@@ -405,30 +409,50 @@ function Dashboard() {
               </SortableContext>
             </div>
 
-            <DragOverlay dropAnimation={null}>
+            <DragOverlay dropAnimation={null} zIndex={100}>
               {activeDragId ? (() => {
                 const activeBoard = boards.find(b => b.id === activeDragId);
                 if (!activeBoard) return null;
                 return (
-                  <div className="w-full max-w-[600px] h-[600px] opacity-80">
-                    <div className="flex flex-col h-full bg-white rounded-xl shadow-2xl overflow-hidden">
-                      <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-                        <div className="text-blue-600">
-                          {getIcon(activeBoard.id, activeBoard.iconId)}
+                  <>
+                    {/* Desktop Overlay */}
+                    <div className="hidden md:block w-full max-w-[600px] h-[600px] cursor-grabbing">
+                      <div className="flex flex-col h-full bg-white rounded-xl shadow-2xl border-2 border-blue-500/50 overflow-hidden transform scale-105 transition-transform">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                          <div className="text-blue-600">
+                            {getIcon(activeBoard.id, activeBoard.iconId)}
+                          </div>
+                          <h2 className="font-semibold text-slate-800 flex-1">{activeBoard.label}</h2>
                         </div>
-                        <h2 className="font-semibold text-slate-800 flex-1">{activeBoard.label}</h2>
-                      </div>
-                      <div className="flex-1 overflow-hidden bg-slate-50 flex items-center justify-center">
-                        <div className="text-slate-400 text-lg">移動中...</div>
+                        <div className="flex-1 overflow-hidden bg-slate-50 flex items-center justify-center">
+                          <div className="text-slate-400 text-lg">移動中...</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+
+                    {/* Mobile Overlay */}
+                    <div className="md:hidden w-full h-24 cursor-grabbing">
+                      <div className="relative w-full h-full bg-white border-2 border-blue-500/50 rounded-xl shadow-2xl flex items-center gap-2 px-2 transform scale-105 transition-transform">
+                        <div className="p-2 shrink-0">
+                          <GripVertical className="w-5 h-5 text-slate-400" />
+                        </div>
+                        <div className="flex-1 flex flex-col items-center justify-center gap-2 py-2">
+                          <div className="text-blue-600">
+                            {getIcon(activeBoard.id, activeBoard.iconId)}
+                          </div>
+                          <div className="text-lg font-bold text-slate-900 text-center px-2">
+                            {activeBoard.label}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 );
               })() : null}
             </DragOverlay>
           </DndContext>
         )}
-        <div className="fixed bottom-1 right-1 text-[10px] text-slate-300 pointer-events-none">v1.1.0</div>
+        <div className="fixed bottom-1 right-1 text-[10px] text-slate-300 pointer-events-none">v1.3.0</div>
       </main>
     </div >
   );
