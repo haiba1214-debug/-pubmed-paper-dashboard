@@ -11,7 +11,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { db } from './lib/firebase'; // Import db
 import { doc, getDoc, setDoc } from 'firebase/firestore'; // Import Firestore functions
 import { DndContext, closestCorners, type DragEndEvent, type DragStartEvent, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, rectSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SEARCH_QUERIES, type QueryItem } from './lib/constants';
 import { Syringe, Baby, Globe, Activity, Plane, Loader2, ArrowLeft, Star, Upload, GripVertical } from 'lucide-react';
@@ -36,7 +36,7 @@ function CategorySection({ queryItem, index, onSelect, onEdit, onDelete }: {
 }) {
   // Stagger requests by 1.5 second per component to avoid rate limiting (max 3 req/s)
   const { articles, loading, error, hasMore, loadMore } = usePubMed(queryItem.query, index * 1500);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({ id: queryItem.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: queryItem.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -48,8 +48,7 @@ function CategorySection({ queryItem, index, onSelect, onEdit, onDelete }: {
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden relative ${isOver ? 'before:content-[""] before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-blue-500 before:z-10' : ''
-        }`}
+      className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"
     >
       <div
         className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2 hover:bg-slate-100/80 transition-colors"
@@ -376,7 +375,7 @@ function Dashboard() {
           <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             {/* Desktop View */}
             <div className="hidden md:grid md:grid-cols-2 gap-4 auto-rows-[600px] h-full overflow-y-auto" id="droppable-container">
-              <SortableContext items={boards.map(b => b.id)} strategy={rectSortingStrategy}>
+              <SortableContext items={boards.map(b => b.id)} strategy={verticalListSortingStrategy}>
                 {boards.map((item, index) => (
                   <CategorySection
                     key={item.id}
