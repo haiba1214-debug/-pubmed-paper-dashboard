@@ -11,10 +11,12 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { db } from './lib/firebase'; // Import db
 import { doc, getDoc, setDoc } from 'firebase/firestore'; // Import Firestore functions
 import { DndContext, closestCorners, type DragEndEvent, type DragStartEvent, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, rectSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SEARCH_QUERIES, type QueryItem } from './lib/constants';
-import { Syringe, Baby, Globe, Activity, Plane, Loader2, ArrowLeft, Star, Upload, GripVertical } from 'lucide-react';
+import { Syringe, Baby, Globe, Activity, Plane, Loader2, ArrowLeft, Star, Upload, GripVertical, ListFilter } from 'lucide-react';
+import { ReorderBoardsModal } from './components/ReorderBoardsModal';
+
 
 function getIcon(id: string, customIconId?: string) {
   const iconId = customIconId || id;
@@ -27,16 +29,20 @@ function getIcon(id: string, customIconId?: string) {
   }
 }
 
-function CategorySection({ queryItem, index, onSelect, onEdit, onDelete }: {
+function CategorySection({ queryItem, index, onSelect, onEdit, onDelete, isDragEnabled = true }: {
   queryItem: QueryItem,
   index: number,
   onSelect: () => void,
   onEdit?: () => void,
-  onDelete?: () => void
+  onDelete?: () => void,
+  isDragEnabled?: boolean
 }) {
   // Stagger requests by 1.5 second per component to avoid rate limiting (max 3 req/s)
   const { articles, loading, error, hasMore, loadMore } = usePubMed(queryItem.query, index * 1500);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: queryItem.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: queryItem.id,
+    disabled: !isDragEnabled
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -57,13 +63,15 @@ function CategorySection({ queryItem, index, onSelect, onEdit, onDelete }: {
       <div
         className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2 hover:bg-slate-100/80 transition-colors"
       >
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 hover:bg-slate-200 rounded transition-colors"
-        >
-          <GripVertical className="w-4 h-4 text-slate-400" />
-        </button>
+        {isDragEnabled && (
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing p-1 hover:bg-slate-200 rounded transition-colors"
+          >
+            <GripVertical className="w-4 h-4 text-slate-400" />
+          </button>
+        )}
         <div
           className="flex items-center gap-2 flex-1 cursor-pointer"
           onClick={onSelect}
@@ -187,6 +195,7 @@ function Dashboard() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showReorderModal, setShowReorderModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<QueryItem | null>(null);
   const [boards, setBoards] = useState<QueryItem[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -222,6 +231,20 @@ function Dashboard() {
     }
     loadData();
   }, [currentUser]);
+
+  const handleReorderSave = async (newBoards: QueryItem[]) => {
+    setBoards(newBoards);
+    // Save to Firestore logic
+    if (currentUser) {
+      try {
+        await setDoc(doc(db, "users", currentUser.uid), {
+          boards: newBoards
+        }, { merge: true });
+      } catch (err) {
+        console.error('Failed to save reordered boards:', err);
+      }
+    }
+  };
 
   const saveToFirestore = async (boardsData: QueryItem[]) => {
     if (!currentUser) return;
@@ -318,6 +341,13 @@ function Dashboard() {
               Log out
             </button>
             <button
+              onClick={() => setShowReorderModal(true)}
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-slate-200"
+            >
+              <ListFilter className="w-5 h-5" />
+              <span>Sort</span>
+            </button>
+            <button
               onClick={() => setShowImportModal(true)}
               className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
             >
@@ -379,18 +409,18 @@ function Dashboard() {
           <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             {/* Desktop View */}
             <div className="hidden md:grid md:grid-cols-2 gap-4 auto-rows-[600px] h-full overflow-y-auto" id="droppable-container">
-              <SortableContext items={boards.map(b => b.id)} strategy={rectSortingStrategy}>
-                {boards.map((item, index) => (
-                  <CategorySection
-                    key={item.id}
-                    queryItem={item}
-                    index={index}
-                    onSelect={() => setSelectedCategoryId(item.id)}
-                    onEdit={() => handleEditCategory(item.id)}
-                    onDelete={() => handleDeleteCategory(item.id)}
-                  />
-                ))}
-              </SortableContext>
+              {/* Removed SortableContext for Desktop - using ReorderModal instead */}
+              {boards.map((item, index) => (
+                <CategorySection
+                  key={item.id}
+                  queryItem={item}
+                  index={index}
+                  onSelect={() => setSelectedCategoryId(item.id)}
+                  onEdit={() => handleEditCategory(item.id)}
+                  onDelete={() => handleDeleteCategory(item.id)}
+                  isDragEnabled={false} // Disable drag on desktop grid
+                />
+              ))}
             </div>
 
             {/* Mobile View */}
@@ -452,7 +482,13 @@ function Dashboard() {
             </DragOverlay>
           </DndContext>
         )}
-        <div className="fixed bottom-1 right-1 text-[10px] text-slate-300 pointer-events-none">v1.3.0</div>
+        <ReorderBoardsModal
+          isOpen={showReorderModal}
+          onClose={() => setShowReorderModal(false)}
+          boards={boards}
+          onSave={handleReorderSave}
+        />
+        <div className="fixed bottom-1 right-1 text-[10px] text-slate-300 pointer-events-none">v1.4.0</div>
       </main>
     </div >
   );
