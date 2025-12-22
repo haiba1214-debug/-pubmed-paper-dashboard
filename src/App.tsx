@@ -16,6 +16,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { SEARCH_QUERIES, type QueryItem } from './lib/constants';
 import { Syringe, Baby, Globe, Activity, Plane, Loader2, ArrowLeft, Star, Upload, GripVertical, ListFilter } from 'lucide-react';
 import { ReorderBoardsModal } from './components/ReorderBoardsModal';
+import { InAppBrowserWarning } from './components/InAppBrowserWarning';
 
 
 function getIcon(id: string, customIconId?: string) {
@@ -322,6 +323,7 @@ function Dashboard() {
 
   return (
     <div className="h-screen bg-slate-100 flex flex-col overflow-hidden">
+      <InAppBrowserWarning />
       <header className="bg-white border-b border-slate-200 px-6 py-3 flex-shrink-0 z-10">
         <div className="flex items-center justify-between">
           <div
@@ -489,7 +491,7 @@ function Dashboard() {
           boards={boards}
           onSave={handleReorderSave}
         />
-        <div className="fixed bottom-1 right-1 text-[10px] text-slate-300 pointer-events-none">v1.4.1</div>
+        <div className="fixed bottom-1 right-1 text-[10px] text-slate-300 pointer-events-none">v1.4.2</div>
       </main>
     </div >
   );
