@@ -491,7 +491,7 @@ function Dashboard() {
           boards={boards}
           onSave={handleReorderSave}
         />
-        <div className="fixed bottom-1 right-1 text-[10px] text-slate-300 pointer-events-none">v1.4.2</div>
+        <div className="fixed bottom-1 right-1 text-[10px] text-slate-300 pointer-events-none">v1.4.3</div>
       </main>
     </div >
   );
